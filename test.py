@@ -8,10 +8,12 @@ from citeomatic.models.text_embedding import Text_Embedding
 from citeomatic.models.paper_embedding import Paper_Embedding
 from citeomatic.models.embeddingmodel import EmbeddingModel
 from citeomatic.models.options import ModelOptions
+from citeomatic.models.citationranker import CitationRanker
 
 print("imported citeomatic modules...")
 #and for this demo we need:
 import torch
+import numpy  as np
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.data.iterators import BasicIterator
 from allennlp.training.trainer import Trainer
@@ -71,4 +73,16 @@ try:
 except RuntimeError:
 	print("model needs to be passed candidate and label to train, but feedforward works!")
 
-print(list(embedder.parameters()))
+#print(list(embedder.parameters()))
+
+#test nnrank
+nnrank = CitationRanker(vocab,opts,text_embedder)
+
+nnrank.forward({"tokens":x_t["tokens"].unsqueeze(0)},
+               {"tokens":x1_t["tokens"].unsqueeze(0)},
+               {"tokens":x_t["tokens"].unsqueeze(0)},
+               {"tokens":x1_t["tokens"].unsqueeze(0)},
+               {"citations":torch.tensor([[np.log(10.0)]])},
+               {"intersection":torch.tensor([[2.54]])},
+               {"intersection":torch.tensor([[2.54]])},
+               {"cos-sim":torch.tensor([[0.43]])})

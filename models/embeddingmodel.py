@@ -5,6 +5,7 @@ from torch.nn import Module
 
 from allennlp.models import Model
 from allennlp.modules.text_field_embedders import TextFieldEmbedder
+from allennlp.modules.similarity_functions.cosine import CosineSimilarity
 
 #from citeomatic.models.options import ModelOptions
 from allennlp.data.vocabulary import Vocabulary
@@ -36,19 +37,22 @@ class EmbeddingModel(Model):
         
         output = {"query_embed": query_embed}
         
-        has_training_examples = candidate_title is not None and candidate_abstract is not None and labels is not None
+        has_candidate = candidate_title is not None and candidate_abstract is not None
+        has_training_examples = has_candidate and labels is not None
         
-        if has_training_examples:
+        if has_candidate:
             candidate_title_embed = self.text_embedder.forward(candidate_title["tokens"])
             candidate_abstract_embed = self.text_embedder.forward(candidate_title["tokens"])
             
             candidate_embed = self.paper_embedder.forward(candidate_title_embed, candidate_abstract_embed)
             
-            output["loss"] = self.compute_loss(query_embed, candidate_embed, labels)
+            output["cos-sim"] = CosineSimilarity().forward(query_embed,candidate_embed)
+            if has_training_examples:                
+                output["loss"] = self.compute_loss(query_embed, candidate_embed, labels)
         
         return output
     
-    def compute_loss(self, query: tensor, candidate: tensor, labels: tensor) -> tensor:
+    def __compute_loss(self, query: tensor, candidate: tensor, labels: tensor) -> tensor:
         #compute cosine distances between queries and candidates
         #in existing implementation it looks like they're just doing a dot product instead of cosine distance?
         cosine_similarity = CosineSimilarity().forward(query,candidate)
