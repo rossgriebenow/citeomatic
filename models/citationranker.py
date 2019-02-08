@@ -38,18 +38,19 @@ class CitationRanker(Model):
                 query_abstract: Dict[str, tensor],
                 candidate_title: Dict[str, tensor],
                 candidate_abstract: Dict[str, tensor],
-                candidate_citations: Dict[str, tensor],
-                title_intersection: Dict[str, tensor],
-                abstract_intersection: Dict[str, tensor],
-                cos_sim: Dict[str, tensor],
-                labels: tensor = None) -> Dict[str,tensor]:
+                candidate_citations: tensor,
+                title_intersection: tensor,
+                abstract_intersection: tensor,
+                cos_sim: tensor,
+                label: tensor = None) -> Dict[str,tensor]:
         
         #Assumming scalars are still packaged as dicts of tensors to keep with allennlp style for now,
         #keys are candidate_citations["citations"], title_intersection["intersection"], abstract_intersection["intersection"], cos-sim["cos-sim"]
-        num_citations = candidate_citations["citations"]
-        title_intersect = title_intersection["intersection"]
-        abstract_intersect = abstract_intersection["intersection"]
-        embed_sim = cos_sim["cos-sim"]
+        #num_citations = candidate_citations["candidate_citations"]
+        #title_intersect = title_intersection["intersection"]
+        #abstract_intersect = abstract_intersection["intersection"]
+        
+        #embed_sim = cos_sim["cos-sim"]
         
         query_title_embed = self.text_embedder.forward(query_title["tokens"])
         query_abstract_embed = self.text_embedder.forward(query_abstract["tokens"])
@@ -61,25 +62,25 @@ class CitationRanker(Model):
         
         abstract_cos_sim = CosineSimilarity().forward(query_abstract_embed,candidate_abstract_embed).unsqueeze(-1)
         
-        intermediate_output = cat((title_cos_sim, abstract_cos_sim, num_citations, title_intersect, abstract_intersect, embed_sim), dim = -1)
+        intermediate_output = cat((title_cos_sim, abstract_cos_sim, candidate_citations, title_intersection, abstract_intersection, cos_sim), dim = -1)
         
         pred = self.layers.forward(intermediate_output)
         
         output = {"cite_prob":pred}
         
-        if labels is not None:
-            output["loss"] = self.compute_loss(pred,labels)
+        if label is not None:
+            output["loss"] = self._compute_loss(pred,label)
             
         return output
             
         
-    def __compute_loss(self, pred: tensor, labels: tensor) -> tensor:
+    def _compute_loss(self, pred: tensor, label: tensor) -> tensor:
         #in existing implementation training examples with even indices are positive/odd indices are negative
         positive = pred[::2]
         negative = pred[1::2]
         
-        #"margin is given by the difference in labels"
-        margin = labels[::2] - labels[1::2]
+        #"margin is given by the difference in label"
+        margin = label[::2] - label[1::2]
         delta = max(clamp(margin + negative - positive,min=0))
         
         return mean(delta)

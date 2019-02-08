@@ -28,7 +28,7 @@ class EmbeddingModel(Model):
                 query_abstract: Dict[str, tensor],
                 candidate_title: Dict[str, tensor] = None,
                 candidate_abstract: Dict[str, tensor] = None,
-                labels: tensor = None) -> Dict[str,tensor]:
+                label: tensor = None) -> Dict[str,tensor]:
         
         query_title_embed = self.text_embedder.forward(query_title["tokens"])
         query_abstract_embed = self.text_embedder.forward(query_abstract["tokens"])
@@ -38,7 +38,7 @@ class EmbeddingModel(Model):
         output = {"query_embed": query_embed}
         
         has_candidate = candidate_title is not None and candidate_abstract is not None
-        has_training_examples = has_candidate and labels is not None
+        has_training_examples = has_candidate and label is not None
         
         if has_candidate:
             candidate_title_embed = self.text_embedder.forward(candidate_title["tokens"])
@@ -46,13 +46,13 @@ class EmbeddingModel(Model):
             
             candidate_embed = self.paper_embedder.forward(candidate_title_embed, candidate_abstract_embed)
             
-            output["cos-sim"] = CosineSimilarity().forward(query_embed,candidate_embed)
+            output["cos-sim"] = CosineSimilarity().forward(query_embed,candidate_embed).unsqueeze(-1)
             if has_training_examples:                
-                output["loss"] = self.compute_loss(query_embed, candidate_embed, labels)
+                output["loss"] = self._compute_loss(query_embed, candidate_embed, label)
         
         return output
     
-    def __compute_loss(self, query: tensor, candidate: tensor, labels: tensor) -> tensor:
+    def _compute_loss(self, query: tensor, candidate: tensor, label: tensor) -> tensor:
         #compute cosine distances between queries and candidates
         #in existing implementation it looks like they're just doing a dot product instead of cosine distance?
         cosine_similarity = CosineSimilarity().forward(query,candidate)
@@ -62,7 +62,7 @@ class EmbeddingModel(Model):
         negative = cosine_similarity[1::2]
         
         #"margin is given by the difference in labels"
-        margin = labels[::2] - labels[1::2]
+        margin = label[::2] - label[1::2]
         delta = max(clamp(margin + negative - positive,min=0))
         
         return mean(delta)
