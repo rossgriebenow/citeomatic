@@ -17,15 +17,16 @@ def stream_papers(data_path):
         citations.discard(line_json[FieldNames.PAPER_ID])  # remove self-citations
         citations = list(citations)
 
-        in_citation_count = int(line_json[FieldNames.IN_CITATION_COUNT])
+        in_citation_count = len(line_json[FieldNames.IN_CITATIONS])
 
         key_phrases = list(set(line_json[FieldNames.KEY_PHRASES]))
+        
+        #auths = line_json[FieldNames.AUTHORS]
 
         yield ProtoDoc(
             id=line_json[FieldNames.PAPER_ID],
             title=line_json[FieldNames.TITLE],
             abstract=line_json[FieldNames.ABSTRACT],
-            authors=line_json[FieldNames.AUTHORS],
             out_citations=citations,
             in_citation_count=in_citation_count,
             year=line_json.get(FieldNames.YEAR, 2017),
@@ -41,11 +42,11 @@ def build_corpus(db_filename, corpus_json):
         conn.execute('PRAGMA journal_mode=MEMORY')
         conn.row_factory = sqlite3.Row
         conn.execute(
-            '''CREATE TABLE IF NOT EXISTS ids (id STRING, year INT)'''
+            '''CREATE TABLE IF NOT EXISTS ids (key INTEGER PRIMARY KEY ASC, id STRING, year INT)'''
         )
         conn.execute(
             '''CREATE TABLE IF NOT EXISTS documents
-                    (id STRING, year INT, payload BLOB)'''
+                    (key INTEGER PRIMARY KEY ASC, id STRING, year INT, payload BLOB)'''
         )
         conn.execute('''CREATE INDEX IF NOT EXISTS year_idx on ids (year)''')
         conn.execute('''CREATE INDEX IF NOT EXISTS id_idx on ids (id)''')
@@ -93,12 +94,12 @@ class Corpus(object):
         """
         if date_range is None:
             query = '''
-                SELECT id from ids
+                SELECT key from ids
                 ORDER BY year
             '''
         else:
             query = '''
-            SELECT id from ids 
+            SELECT key from ids 
             WHERE year >= {} AND year <= {} 
             ORDER BY year
             '''.format(date_range[0], date_range[1])
@@ -107,12 +108,12 @@ class Corpus(object):
             query
         ).fetchall()
 
-        all_ids = [str(r[0]) for r in id_rows]
+        all_ids = [r[0] for r in id_rows]
         return all_ids
 
     def __init__(self, data_path, train_frac):
         self._conn = sqlite3.connect(
-            'file://%s?mode=ro' % data_path, check_same_thread=False, uri=True
+            data_path, check_same_thread=False, uri=True
         )
         self.train_frac = train_frac
 

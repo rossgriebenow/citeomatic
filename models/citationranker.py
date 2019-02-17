@@ -29,7 +29,7 @@ class CitationRanker(Model):
         
         self.activations = [Activation.by_name("elu")(),Activation.by_name("elu")(),Activation.by_name("sigmoid")()]
         self.layers = FeedForward(input_dim=self.intermediate_dim,
-                                  num_layers=3,
+                                  num_layers=self.n_layers,
                                   hidden_dims=self.layer_dims,
                                   activations=self.activations)
     
@@ -43,14 +43,6 @@ class CitationRanker(Model):
                 abstract_intersection: tensor,
                 cos_sim: tensor,
                 label: tensor = None) -> Dict[str,tensor]:
-        
-        #Assumming scalars are still packaged as dicts of tensors to keep with allennlp style for now,
-        #keys are candidate_citations["citations"], title_intersection["intersection"], abstract_intersection["intersection"], cos-sim["cos-sim"]
-        #num_citations = candidate_citations["candidate_citations"]
-        #title_intersect = title_intersection["intersection"]
-        #abstract_intersect = abstract_intersection["intersection"]
-        
-        #embed_sim = cos_sim["cos-sim"]
         
         query_title_embed = self.text_embedder.forward(query_title["tokens"])
         query_abstract_embed = self.text_embedder.forward(query_abstract["tokens"])

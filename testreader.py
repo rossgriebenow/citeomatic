@@ -27,7 +27,7 @@ class ScalarField(Field):
 
 class TestReader(DatasetReader):
     def __init__(self, vocab: Vocabulary, token_indexers: Dict[str, TokenIndexer] = None) -> None:
-        super().__init__(lazy=False)
+        super().__init__(lazy=True)
         self.vocab = vocab
         self.vocab_size = self.vocab.get_vocab_size()
         self.token_indexers = token_indexers or {"tokens": SingleIdTokenIndexer()}
@@ -35,6 +35,7 @@ class TestReader(DatasetReader):
         
     def text_to_instance(self, query_title: List[Token],
                          query_abstract: List[Token],
+                         query_id: int = None,
                          candidate_title: List[Token] = None,
                          candidate_abstract: List[Token] = None,
                          label: float = None,
@@ -47,6 +48,10 @@ class TestReader(DatasetReader):
         query_abstract_field = TextField(query_abstract, self.token_indexers)
         
         fields = {"query_title": query_title_field, "query_abstract": query_abstract_field}
+        
+        if query_id is not None:
+            query_id_field = ScalarField(query_id)
+            fields["query_id"] = query_id_field
         
         has_candidate = candidate_title is not None and candidate_abstract is not None
         
@@ -75,7 +80,7 @@ class TestReader(DatasetReader):
     
     def _read(self, file_path: str) -> Iterator[Instance]:
         #make random data to test models
-        for _ in range(1000):
+        for i in range(1000):
             query_title = [Token(self.vocab.get_token_from_index(i)) for i in np.random.randint(2,self.vocab_size,(np.random.randint(5,25)))]
             query_abstract = [Token(self.vocab.get_token_from_index(i)) for i in np.random.randint(2,self.vocab_size,(np.random.randint(50,100)))]
             
@@ -92,10 +97,10 @@ class TestReader(DatasetReader):
                 
                 cos_sim = np.random.uniform(0,1)
                 
-                yield self.text_to_instance(query_title,query_abstract, candidate_title, candidate_abstract, label, candidate_citations, title_intersect, abstract_intersect, cos_sim)
+                yield self.text_to_instance(query_title,query_abstract, i, candidate_title, candidate_abstract, label, candidate_citations, title_intersect, abstract_intersect, cos_sim)
                 
             else:
-                yield self.text_to_instance(query_title,query_abstract, candidate_title, candidate_abstract, label)
+                yield self.text_to_instance(query_title,query_abstract, i, candidate_title, candidate_abstract, label)
                 
     def set_compute_nnrank_features(self, val: bool):
         self.compute_nnrank_features = val

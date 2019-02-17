@@ -26,6 +26,7 @@ class EmbeddingModel(Model):
     def forward(self,
                 query_title: Dict[str, tensor],
                 query_abstract: Dict[str, tensor],
+                query_id: tensor = None,
                 candidate_title: Dict[str, tensor] = None,
                 candidate_abstract: Dict[str, tensor] = None,
                 label: tensor = None) -> Dict[str,tensor]:
@@ -49,6 +50,9 @@ class EmbeddingModel(Model):
             output["cos-sim"] = CosineSimilarity().forward(query_embed,candidate_embed).unsqueeze(-1)
             if has_training_examples:                
                 output["loss"] = self._compute_loss(query_embed, candidate_embed, label)
+                
+        if query_id is not None:
+            output["query_id"] = query_id
         
         return output
     

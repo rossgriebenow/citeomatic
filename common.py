@@ -4,7 +4,7 @@ import os
 import pickle
 
 #from citeomatic import file_util
-#from citeomatic.schema_pb2 import Document as ProtoDoc
+from citeomatic.schema_pb2 import Document as ProtoDoc
 #import spacy
 #from whoosh.fields import *
 
@@ -39,26 +39,26 @@ CITATION_RANKER_MODEL = 'citation_ranker'
 class FieldNames(object):
     PAPER_ID = "id"
     TITLE = "title"
-    ABSTRACT = "abstract"
+    ABSTRACT = "paperAbstract"
     AUTHORS = "authors"
 
     VENUE = "venue"
     YEAR = "year"
 
-    IN_CITATIONS = "in_citations"
-    OUT_CITATIONS = "out_citations"
-    KEY_PHRASES = "key_phrases"
+    IN_CITATIONS = "inCitations"
+    OUT_CITATIONS = "outCitations"
+    KEY_PHRASES = "entities"
 
-    URLS = "pdf_urls"
-    S2_URL = "s2_url"
+    URLS = "s2PdfUrl"
+    S2_URL = "s2Url"
 
-    OUT_CITATION_COUNT = 'out_citation_count'
-    IN_CITATION_COUNT = 'in_citation_count'
+    #OUT_CITATION_COUNT = 'out_citation_count'
+    #IN_CITATION_COUNT = 'in_citation_count'
 
-    DATE = 'date'
+    #DATE = 'date'
 
-    TITLE_RAW = "title_raw"
-    ABSTRACT_RAW = "abstract_raw"
+    TITLE_RAW = "title"
+    ABSTRACT_RAW = "paperAbstract"
 
 
 class DatasetPaths(object):
@@ -151,13 +151,14 @@ class Document(object):
         FieldNames.ABSTRACT,
         FieldNames.AUTHORS,
         FieldNames.OUT_CITATIONS,
+        FieldNames.IN_CITATIONS,
         FieldNames.YEAR,
         FieldNames.PAPER_ID,
         FieldNames.VENUE,
-        FieldNames.IN_CITATION_COUNT,
-        FieldNames.OUT_CITATION_COUNT,
+        #FieldNames.IN_CITATION_COUNT,
+        #FieldNames.OUT_CITATION_COUNT,
         FieldNames.KEY_PHRASES,
-        FieldNames.DATE,
+        #FieldNames.DATE,
         FieldNames.TITLE_RAW,
         FieldNames.ABSTRACT_RAW,
     ]
@@ -169,7 +170,7 @@ class Document(object):
             authors,
             out_citations,
             year,
-            id: str,
+            id: int,
             venue,
             in_citation_count,
             out_citation_count,
@@ -203,7 +204,7 @@ class Document(object):
     def _asdict(self):
         return dict(**self.__dict__)
 
-    '''@staticmethod
+    @staticmethod
     def from_proto_doc(doc: ProtoDoc):
         out_citations = [c for c in doc.out_citations]
         return Document(
@@ -219,7 +220,7 @@ class Document(object):
             key_phrases=[p for p in doc.key_phrases],
             title_raw=doc.title_raw,
             abstract_raw=doc.abstract_raw,
-        )'''
+        )
 
 
 class ModelLoader(pickle.Unpickler):

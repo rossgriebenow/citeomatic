@@ -3,6 +3,8 @@ import numpy  as np
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.data.iterators import BasicIterator
 from allennlp.training.trainer import Trainer
+from allennlp.training.trainer import move_optimizer_to_cuda
+
 
 from typing import Dict
 
@@ -34,6 +36,7 @@ iterator = BasicIterator()
 iterator.index_with(vocab)
 
 optimizer = torch.optim.SGD(nnrank.parameters(), lr=0.1)
+move_optimizer_to_cuda(optimizer)
 
 trainer = Trainer(model=nnrank,
                   optimizer=optimizer,
@@ -42,6 +45,7 @@ trainer = Trainer(model=nnrank,
                   validation_dataset=dataset,
                   patience=1000,
                   num_epochs=10,
-                  summary_interval=2)
+                  summary_interval=2,
+                  cuda_device=0)
                   
 trainer.train()
