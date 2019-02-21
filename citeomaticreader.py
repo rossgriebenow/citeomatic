@@ -135,7 +135,7 @@ class CiteomaticReader(DatasetReader):
             
             query_title = self._tokenize_text(doc.title)
             query_abstract = self._tokenize_text(doc.abstract)
-            query_id = idx
+            query_id = idx-1
             
             #get real citations (positive candidate)
             query_citation_ids = [db.doc_id_to_index_dict(cite) for cite in doc.out_citations]
@@ -164,9 +164,9 @@ class CiteomaticReader(DatasetReader):
             
             shuffle_pos = np.random.randint(0, len(query_citation_ids),size=3*N_NEGS_PER_TYPE)
             #yield positive and negative examples
-            for n, idx in enumerate(shuffle_pos):
+            for n, id in enumerate(shuffle_pos):
                 
-                true_citation = query_citation_ids[idx]
+                true_citation = query_citation_ids[id]
                 yield self._instance_from_ids(query_id,true_citation, margins_offset_dict["true"])
                     
                 if n % 3 == 0:
@@ -219,10 +219,10 @@ class CiteomaticReader(DatasetReader):
         return float(len(c)) / (len(a) + len(b) - len(c))
     
     def _single_field_jaccard(self, x, y) -> float:
-        x = set([str(t) for t in x])
-        y = set([str(t) for t in y])
-        z = x.intersection(y)
-        return float(len(z)) / (len(x) + len(y) - len(z))
+        a = set([str(t) for t in x])
+        b = set([str(t) for t in y])
+        c = a.intersection(b)
+        return float(len(c)) / (len(a) + len(b) - len(c))
         
     
     def _cite_boost(self, citations, offset):
