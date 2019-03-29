@@ -1,4 +1,4 @@
-from typing import List
+from typing import Iterable, List
 
 from allennlp.models import Model
 from allennlp.data import Instance
@@ -11,18 +11,22 @@ class ANN(object):
     def __init__(self, annoy: AnnoyIndex = None, id_dict = None) -> None:
         self.annoy = annoy
         #self.s2_id_to_ann = id_dict
-    
-    def build(self, embedder: Model, instances: List[Instance], ann_trees: int = 100) -> None:
-        logging.info("computing corpus embeddings")
-        embeddings = [(instance["query_id"], instance["query_embed"]) for instance in tqdm.tqdm(embedder.forward_on_instances(instances))]
-        
+
+    @staticmethod 
+    def build(self, embedder: Model, instances: Iterable[Instance], vec_size: int, ann_trees: int = 100) -> None:
+        #logging.info("computing corpus embeddings")
+        #embeddings = [(instance["query_id"], instance["query_embed"]) for instance in tqdm.tqdm(embedder.forward_on_instances(instances))]
+
         logging.info("building annoy index")
-        self.annoy = AnnoyIndex(len(embeddings[0][1]))
-        for i, embedding in enumerate(tqdm.tqdm(embeddings)):
+        annoy = AnnoyIndex(vec_size)
+        for i, instance in tqdm.tqdm(enumerate(instances)):
             #self.s2_id_to_ann[embedding[0]] = i
-            self.annoy.add_item(embedding[0],embedding[1])
+            embed = embedder.forward_on_instance(instance)
+            annoy.add_item(embed["query_id"],embed["query_embed"])
             
-        self.annoy.build(ann_trees)
+        annoy.build(ann_trees)
+
+        return ANN(annoy)
             
     def save(self, target: str) -> None:
         assert self.annoy is not None
@@ -43,7 +47,7 @@ class ANN(object):
         assert self.annoy is not None
         query_embed = embedder.forward_on_instance(instance)["query_embed"]
         print(query_embed)
-        nns = self.annoy.get_nns_by_vector(query_embed,top_n)
+        nns = self.annoy.get_nns_by_vector(query_embed,top_n, include_distances=True)
         return nns
     
     def get_nns_by_id(self,idx: int,top_n: int = 50) -> List[int]:
