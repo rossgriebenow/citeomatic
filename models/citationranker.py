@@ -9,22 +9,20 @@ from allennlp.modules.text_field_embedders import TextFieldEmbedder
 from allennlp.modules.similarity_functions.cosine import CosineSimilarity
 from allennlp.data.vocabulary import Vocabulary
 
-from citeomatic.models.options import ModelOptions
-
-#It looks like the ranker uses the same text embedder architecture as the embedding model but doesnt share weights- should confirm with Chandra
 class CitationRanker(Model):
     def __init__(self,
                  vocab: Vocabulary,
-                 options: ModelOptions,
-                 text_embedder: TextFieldEmbedder,
-                 pretrained_embeddings=None) -> None:
+                 title_embedder: TextFieldEmbedder,
+                 abstract_embedder: TextFieldEmbedder,
+                 dense_dim=75) -> None:
         
         super().__init__(vocab)
         
-        self.text_embedder = text_embedder
+        self.title_embedder = title_embedder
+        self.abstract_embedder = abstract_embedder
         self.intermediate_dim = 6
         self.n_layers = 3
-        self.layer_dims = [options.dense_dim for i in range(self.n_layers-1)]
+        self.layer_dims = [dense_dim for i in range(self.n_layers-1)]
         self.layer_dims.append(1)
         
         self.activations = [Activation.by_name("elu")(),Activation.by_name("elu")(),Activation.by_name("sigmoid")()]
@@ -44,11 +42,11 @@ class CitationRanker(Model):
                 cos_sim: tensor,
                 label: tensor = None) -> Dict[str,tensor]:
         
-        query_title_embed = self.text_embedder.forward(query_title["tokens"])
-        query_abstract_embed = self.text_embedder.forward(query_abstract["tokens"])
+        query_title_embed = self.title_embedder.forward(query_title["tokens"])
+        query_abstract_embed = self.abstract_embedder.forward(query_abstract["tokens"])
         
-        candidate_title_embed = self.text_embedder.forward(candidate_title["tokens"])
-        candidate_abstract_embed = self.text_embedder.forward(candidate_title["tokens"])
+        candidate_title_embed = self.title_embedder.forward(candidate_title["tokens"])
+        candidate_abstract_embed = self.abstract_embedder.forward(candidate_title["tokens"])
         
         title_cos_sim = CosineSimilarity().forward(query_title_embed,candidate_title_embed).unsqueeze(-1)
         
