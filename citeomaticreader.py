@@ -329,9 +329,35 @@ class SimpleReader(DatasetReader):
         
         query_title_field = TextField(query_title, self.token_indexers)
         query_abstract_field = TextField(query_abstract, self.token_indexers)
-        query_id_field = ScalarField(query_id)
-        
-        fields = {"query_title": query_title_field, "query_abstract": query_abstract_field, "query_id": query_id_field}            
+
+        fields = {"query_title": query_title_field, "query_abstract": query_abstract_field}
+
+        has_candidate = candidate_title is not None and candidate_abstract is not None
+
+        if has_candidate:
+            candidate_title_field = TextField(candidate_title, self.token_indexers)
+            candidate_abstract_field = TextField(candidate_abstract, self.token_indexers)
+
+            fields["candidate_title"] = candidate_title_field
+            fields["candidate_abstract"] = candidate_abstract_field
+
+        if label is not None:
+            fields["label"] = ScalarField(label)
+
+        has_nnrank_features = (candidate_citations is not None
+                               and title_intersection is not None
+                               and abstract_intersection is not None
+                               and similarity is not None)
+
+        if has_nnrank_features:
+            fields["candidate_citations"] = ScalarField(candidate_citations)
+            fields["title_intersection"] = ScalarField(title_intersection)
+            fields["abstract_intersection"] = ScalarField(abstract_intersection)
+            fields["cos_sim"] = ScalarField(similarity)
+        elif query_id is not None:
+            query_id_field = ScalarField(query_id)
+            fields["query_id"] = query_id_field
+
         return Instance(fields)
     
     def _read(self,str="") -> Iterator[Instance]:
@@ -346,3 +372,17 @@ class SimpleReader(DatasetReader):
         tokens = CLEAN_TEXT_RE.sub(' ', text.lower()).split()
         mask = [word not in STOPWORDS for word in tokens]
         return [Token(word) for word in compress(tokens,mask)]
+
+    def _jaccard(self, x_title, x_abstract, y_title, y_abstract) -> float:
+        x_title = [str(t) for t in x_title]
+        x_abstract = [str(t) for t in x_abstract]
+        y_title = [str(t) for t in y_title]
+        y_abstract = [str(t) for t in y_abstract]
+
+        a = set(x_title + x_abstract)
+        b = set(y_title + y_abstract)
+        c = a.intersection(b)
+        if len(a)+len(b) == len(c):
+            return 0
+        else:
+            return float(len(c)) / (len(a) + len(b) - len(c))

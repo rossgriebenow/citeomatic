@@ -46,7 +46,6 @@ class ANN(object):
     def get_nns_by_instance(self, instance: List[Instance],embedder: Model, top_n:int = 50) -> List[int]:
         assert self.annoy is not None
         query_embed = embedder.forward_on_instance(instance)["query_embed"]
-        print(query_embed)
         nns = self.annoy.get_nns_by_vector(query_embed,top_n, include_distances=True)
         return nns
     
