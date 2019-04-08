@@ -1,3 +1,6 @@
+import os
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+
 import pandas as pd
 import tqdm
 
@@ -44,7 +47,7 @@ rank_abs_embed = Text_Embedding(vocab)
 rank_title_embed = Text_Embedding(vocab)
 ranker = CitationRanker(vocab,rank_title_embed,rank_abs_embed)
 
-ann = ANN.load("../ann",75)
+ann = ANN.load("../bigger_ann",75)
 
 train_frac = 0.995
 train_set = int(len(df)*train_frac)
@@ -52,21 +55,13 @@ train_set = int(len(df)*train_frac)
 ann_reader = SimpleReader(df)
 ann_data = ann_reader.read("")
 
-embed_training_reader = CiteomaticReader(df,idx_to_id_dict,ann,train_frac=train_frac, validation = False)
-embed_training_reader.set_compute_nnrank_features(False)
-embed_training_data = embed_training_reader.read("")
+#val_reader = CiteomaticReader(df,idx_to_id_dict,ann,train_frac=train_frac, validation = True)
+#val_reader.set_compute_nnrank_features(True)
 
-rank_training_reader = CiteomaticReader(df,idx_to_id_dict,ann,train_frac=train_frac, validation = False)
-rank_training_reader.set_compute_nnrank_features(True)
-rank_training_data = embed_training_reader.read("")
-
-val_reader = CiteomaticReader(df,idx_to_id_dict,ann,train_frac=train_frac, validation = True)
-val_reader.set_compute_nnrank_features(True)
-
-simple = SimpleReader(df.iloc[:100])
+simple = SimpleReader(df.iloc[train_set:])
 val_data = list(simple.read(""))
 
-iterator = BasicIterator(batch_size=32)
+iterator = BasicIterator(batch_size=16)
 iterator.index_with(vocab)
 
 n_epochs=40
@@ -80,42 +75,48 @@ if torch.cuda.is_available():
 else:
     cuda_device = -1
 
-embed_trainer = Trainer(model=embedder,
-                  optimizer=optimizer,
-                  iterator=iterator,
-                  train_dataset=embed_training_data,
-                  #validation_dataset=val_data,
-                  patience=10,
-                  num_epochs=1,
-                  shuffle=False,
-                  cuda_device=cuda_device)
-
-rank_trainer = Trainer(model=ranker,
-                  optimizer=optimizer,
-                  iterator=iterator,
-                  train_dataset=rank_training_data,
-                  #validation_dataset=val_data,
-                  patience=10,
-                  num_epochs=1,
-                  shuffle=False,
-                  cuda_device=cuda_device)
-
 #allennlp doesn't have callbacks so we call the trainer one epoch at a time
 print("beginning training")
 for e_i in range(n_epochs):
     #(re)build ann
-    print("bulding annoy trees")
-    ann = ANN.build(embedder, ann_data, vec_size=text_embedder.get_output_dim(), ann_trees=10)
+    #print("bulding annoy trees")
+    #ann = ANN.build(embedder, ann_data, vec_size=text_embedder.get_output_dim(), ann_trees=10)
 
     #check validation metrics
     print("Evaluating model performance...")
+    val_reader = CiteomaticReader(df,idx_to_id_dict,ann,train_frac=train_frac, validation = True)
+    val_reader.set_compute_nnrank_features(True)
     valid = eval_text_model(val_data,val_reader,embedder,ann,ranker,df, idx_to_id_dict)
     print(valid)
     
     #make new reader with the new ann
-    training_reader = CiteomaticReader(df,idx_to_id_dict,ann,train_frac=train_frac, validation = False)
-    training_reader.set_compute_nnrank_features(False)
-    training_data = training_reader.read("")
+    embed_training_reader = CiteomaticReader(df,idx_to_id_dict,ann,train_frac=train_frac, validation = False)
+    embed_training_reader.set_compute_nnrank_features(False)
+    embed_training_data = embed_training_reader.read("")
+
+    rank_training_reader = CiteomaticReader(df,idx_to_id_dict,ann,train_frac=train_frac, validation = False)
+    rank_training_reader.set_compute_nnrank_features(True)
+    rank_training_data = embed_training_reader.read("")
+    
+    embed_trainer = Trainer(model=embedder,
+                      optimizer=optimizer,
+                      iterator=iterator,
+                      train_dataset=embed_training_data,
+                      #validation_dataset=val_data,
+                      patience=10,
+                      num_epochs=1,
+                      shuffle=False,
+                      cuda_device=cuda_device)
+
+    rank_trainer = Trainer(model=ranker,
+                      optimizer=optimizer,
+                      iterator=iterator,
+                      train_dataset=rank_training_data,
+                      #validation_dataset=val_data,
+                      patience=10,
+                      num_epochs=1,
+                      shuffle=False,
+                      cuda_device=cuda_device)
     
     #run for an epoch
     print("Beginning Embedder Epoch")
