@@ -16,14 +16,17 @@ class ANN(object):
     def build(embedder: Model, instances: Iterable[Instance], vec_size: int, ann_trees: int = 100) -> None:
         logging.info("building annoy index")
         annoy = AnnoyIndex(vec_size)
+        
+        ids = list()
 
         batch = list()
         for i, instance in tqdm.tqdm(enumerate(instances)):
             batch.append(instance)
             
-            if len(batch) == 64:
+            if len(batch) == 32:
                 embeddings = embedder.forward_on_instances(batch)
                 for embed in embeddings:
+                    ids.append(embed["query_id"])
                     annoy.add_item(embed["query_id"],embed["query_embed"])
                 batch = list()
             
@@ -56,4 +59,9 @@ class ANN(object):
         return self.annoy.get_nns_by_item(idx,top_n)
         
     def get_dist_by_ids(self, i, j) -> float:
-        return self.annoy.get_distance(i,j)
+        try:
+            return self.annoy.get_distance(i,j)
+        except IndexError:
+            print("invalid indices: "+str(self.annoy.get_n_items())+" < ")
+            print((i,j))
+            return []

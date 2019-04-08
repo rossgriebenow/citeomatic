@@ -1,6 +1,6 @@
 from typing import Dict
 
-from torch import tensor, sum
+from torch import tensor, sum, numel, zeros
 from torch.nn import Dropout
 from torch.nn.functional import normalize
 
@@ -29,7 +29,13 @@ class Text_Embedding(TextFieldEmbedder):
         #pytorch hasn't implemented spatial dropout for 1d
         self.dropout = Dropout(p = self.dropout_p)
         
-    def forward(self, text_field_input: Dict[str, tensor], num_wrapping_dims: int = 0)-> tensor:
+    def forward(self, text_field_input: tensor, num_wrapping_dims: int = 0)-> tensor:
+        if numel(text_field_input) == 0:
+            if text_field_input.is_cuda:
+                return zeros(self.dense_dim).cuda()
+            else:
+                return zeros(self.dense_dim)
+
         direction = self.embed_direction.forward(text_field_input)
         direction_normalized = normalize(direction,p=2,dim=-1)
         
