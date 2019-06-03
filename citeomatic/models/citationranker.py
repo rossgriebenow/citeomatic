@@ -71,6 +71,6 @@ class CitationRanker(Model):
         
         #"margin is given by the difference in label"
         margin = label[::2] - label[1::2]
-        delta = max(clamp(margin + negative - positive,min=0))
+        delta = clamp(margin + negative - positive,min=0)
         
         return mean(delta)
