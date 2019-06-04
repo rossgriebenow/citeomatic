@@ -2,6 +2,13 @@ from typing import Dict
 import pandas as pd
 import numpy as np
 
+#move calls to nnselect and nnrank into helper functions so that eval_text_model can be used for alternative architectures:
+def get_candidates(**args):
+    Pass
+    
+def rank_candidates(**args):
+    Pass
+
 def gold_citations(doc_id: int, df: pd.DataFrame, min_citations: int, id_dict: Dict):
     cite_ids = df.iloc[doc_id].outCitations
     gold_citations_1 = set(filter(None,[id_dict.get(i) for i in cite_ids]))
@@ -34,10 +41,14 @@ def eval_text_model(instances, reader, embedder, neighbors, ranker, df, id_dict)
         if len(gold_citations_1) < 10:
             continue
         
+        #this call is dependent on nnselect format- move it to the helper function
         candidates, scores = neighbors.get_nns_by_instance(instance, embedder)
         
+        #these are dependent on nnrank format and should be moved
         rank_inst = [reader._instance_from_ids(query_id,c_id, 1.0) for c_id in candidates]
         rankings = ranker.forward_on_instances(rank_inst)
+        #after this we're good ^
+        
         clean_rankings = [r["cite_prob"][0] for r in rankings]
         order = np.argsort(clean_rankings)
         predictions = np.array(candidates)[order]
